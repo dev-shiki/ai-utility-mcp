@@ -1,0 +1,128 @@
+{
+  "name": "AI Output Sanitizer — Heal Malformed JSON & Redact PII",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## AI Output Sanitizer (Free Template)\nRepairs broken LLM JSON outputs (`json-heal`) and redacts sensitive PII (`pii-shield`) before storing or sending downstream.\n\n### Setup\nSet `RAPIDAPI_KEY` in n8n environment variables and subscribe to **JSON Heal** & **PII Shield** on RapidAPI.",
+        "height": 200,
+        "width": 440
+      },
+      "id": "sticky-ai-sanitizer",
+      "name": "Setup Guide",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [220, 40]
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "When clicking 'Test workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 320]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "raw-llm",
+              "name": "raw",
+              "value": "```json\n{ name: 'Alice', email: 'alice@acme.com', note: 'Call 555-0199', }\n```",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "set-llm-output",
+      "name": "Sample LLM Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 320]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://json-heal.p.rapidapi.com/v1/heal",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-rapidapi-key", "value": "={{ $env.RAPIDAPI_KEY }}" },
+            { "name": "x-rapidapi-host", "value": "json-heal.p.rapidapi.com" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ raw: $json.raw }) }}"
+      },
+      "id": "http-json-heal",
+      "name": "Heal JSON",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 320]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://pii-shield.p.rapidapi.com/v1/redact",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-rapidapi-key", "value": "={{ $env.RAPIDAPI_KEY }}" },
+            { "name": "x-rapidapi-host", "value": "pii-shield.p.rapidapi.com" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: JSON.stringify($json.repaired ?? $json), mode: 'placeholder' }) }}"
+      },
+      "id": "http-pii-shield",
+      "name": "Redact PII",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 320]
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "On Sanitizer Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 560]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "err-msg",
+              "name": "errorSummary",
+              "value": "={{ 'AI Sanitizer failed: ' + ($json.execution?.error?.message || 'Unknown error') }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "format-error",
+      "name": "Format Error Alert",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 560]
+    }
+  ],
+  "connections": {
+    "When clicking 'Test workflow'": {
+      "main": [[{ "node": "Sample LLM Output", "type": "main", "index": 0 }]]
+    },
+    "Sample LLM Output": {
+      "main": [[{ "node": "Heal JSON", "type": "main", "index": 0 }]]
+    },
+    "Heal JSON": {
+      "main": [[{ "node": "Redact PII", "type": "main", "index": 0 }]]
+    },
+    "On Sanitizer Error": {
+      "main": [[{ "node": "Format Error Alert", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

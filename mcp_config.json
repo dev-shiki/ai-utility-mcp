@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "ai-utility-suite": {
+      "url": "https://mcp-utility-suite.nandaleoardana.workers.dev/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MCP_API_KEY}"
+      }
+    }
+  }
+}

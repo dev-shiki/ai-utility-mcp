@@ -1,0 +1,126 @@
+{
+  "name": "Signup Spam & Bot Guard — Email + User-Agent Screening",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Signup Spam & Bot Guard (Free Template)\nScreens incoming signups for disposable/typo emails (`email-guard`) and automated bot User-Agents (`ua-bot-intel`).\n\n### Setup\nSet `RAPIDAPI_KEY` in n8n environment variables and subscribe to **Email Guard** & **UA Bot Intel** on RapidAPI.",
+        "height": 200,
+        "width": 440
+      },
+      "id": "sticky-spam-guard",
+      "name": "Setup Guide",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [220, 40]
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "When clicking 'Test workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 320]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "s-email", "name": "email", "value": "test+bot@mailinator.com", "type": "string" },
+            { "id": "s-ua", "name": "user_agent", "value": "Mozilla/5.0 (compatible; GPTBot/1.0)", "type": "string" }
+          ]
+        }
+      },
+      "id": "set-signup",
+      "name": "Sample Signup Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 320]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://email-guard.p.rapidapi.com/v1/validate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-rapidapi-key", "value": "={{ $env.RAPIDAPI_KEY }}" },
+            { "name": "x-rapidapi-host", "value": "email-guard.p.rapidapi.com" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ email: $json.email }) }}"
+      },
+      "id": "http-email-guard",
+      "name": "Validate Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ua-bot-intel.p.rapidapi.com/v1/parse",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-rapidapi-key", "value": "={{ $env.RAPIDAPI_KEY }}" },
+            { "name": "x-rapidapi-host", "value": "ua-bot-intel.p.rapidapi.com" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ user_agent: $json.user_agent }) }}"
+      },
+      "id": "http-ua-bot",
+      "name": "Detect Bot UA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "On Guard Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 580]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "err-msg",
+              "name": "errorSummary",
+              "value": "={{ 'Signup Guard failed: ' + ($json.execution?.error?.message || 'Unknown error') }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "format-error",
+      "name": "Format Error Alert",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 580]
+    }
+  ],
+  "connections": {
+    "When clicking 'Test workflow'": {
+      "main": [[{ "node": "Sample Signup Payload", "type": "main", "index": 0 }]]
+    },
+    "Sample Signup Payload": {
+      "main": [
+        [
+          { "node": "Validate Email", "type": "main", "index": 0 },
+          { "node": "Detect Bot UA", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "On Guard Error": {
+      "main": [[{ "node": "Format Error Alert", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
