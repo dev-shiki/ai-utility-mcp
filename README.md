@@ -36,6 +36,7 @@ Connect via [`mcp_config.json`](./mcp_config.json):
 
 - **Free Discovery**: `initialize` and `tools/list` are open without authentication.
 - **AI Agent Pay-Per-Call (`x402`)**: Calling `tools/call` without an API key or `X-PAYMENT` header returns `402 Payment Required` (`$0.002` USDC on Base).
+- **RapidAPI REST Subscriptions**: All APIs are also available via [RapidAPI Provider Portfolio](https://rapidapi.com/user/shikiv-ZkrHCuwAa).
 
 ---
 
